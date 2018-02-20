@@ -6,6 +6,7 @@ require "open-uri"
 require 'net/http'
 require 'json'
 require 'versionomy'
+require 'launchy'
 
 class AuditedBundleUpdate
   def run!
@@ -13,44 +14,158 @@ class AuditedBundleUpdate
     bundle_update
     @after_specs = gem_specs
 
+    @output = ""
+    @output += "# Gem Changes\n"
+    @output += "\n"
+
     output_gems("Added Gems", added_gems)
     output_gems("Removed Gems", removed_gems)
     output_changed_gems(changed_gems)
+
+    puts "\n\n\n\n\n"
+
+    puts "--------------------------------"
+    puts "Audited Bundle Upgrade Text"
+    puts "--------------------------------"
+
+    puts @output
   end
 
   def output_gems(title, gems)
     return if gems.empty?
 
-    puts "### #{title}"
-    puts "\n"
-    gems.each { |the_gem| puts "* #{the_gem.name}" }
+    @output += "## #{title}\n"
+    @output += "\n"
+    gems.each { |the_gem| gem_output(the_gem.name, the_gem.version) }
 
-    puts "\n"
+    @output += "\n"
   end
 
   def output_changed_gems(gems)
     return if gems.empty?
 
     major_upgrades = gems.select {|_, versions| versions[:before].major != versions[:after].major }
-    minor_upgrades = gems.select {|_, versions| versions[:before].minor != versions[:after].minor }
+    minor_upgrades = gems.select {|name, versions| !major_upgrades.keys.include?(name) && versions[:before].minor != versions[:after].minor }
     point_upgrades = gems.reject { |name, _| major_upgrades.keys.include?(name) || minor_upgrades.keys.include?(name) }
 
-    puts "### Upgraded Gems"
-    puts "\n"
+    @output += "## Upgraded Gems\n"
+    @output += "\n"
 
     output_changed_gems_section("Major", major_upgrades)
     output_changed_gems_section("Minor", minor_upgrades)
     output_changed_gems_section("Point", point_upgrades)
 
-    puts "\n"
+    @output += "\n"
   end
 
   def output_changed_gems_section(title, gems)
-    puts "### #{title} Upgrades"
-    puts "\n"
-    gems.each { |name, versions| puts "* #{name} (#{versions[:before]} -> #{versions[:after]})" }
+    @output += "### #{title} Upgrades\n"
+    @output += "\n"
+    gems.each { |name, versions| gem_output(name, versions) }
 
-    puts "\n"
+    @output += "\n"
+  end
+
+  def gem_output(name, version)
+    if version.is_a? Hash
+      version_string = "#{version[:before]} -> #{version[:after]}"
+      info = gem_info(name, version[:after])
+
+      guessed_source = gem_source_url(info)
+
+      if guessed_source
+        changelog_text, changelog_url = guess_changelog(guessed_source)
+
+        if changelog_text && !changelog_text.empty?
+          puts "\n\n\n"
+          puts "--------------------------------"
+          puts "#{name} changes from #{version_string}"
+          puts "--------------------------------"
+          # Output the changelog text from top until the line that contains the previous version
+          changelog_output = changelog_text.split(/^.*#{version[:before]}/, 2).first
+          # Max 200 lines
+          changelog_output = changelog_output.lines.to_a[0...200].join
+          puts changelog_output
+          impact = nil
+          while impact.nil?
+            puts "Does this impact your application? (y/n/[o]pen in browser)"
+            answer = gets
+            answer = answer.downcase.strip
+            if answer == "y"
+              puts "What's a short description of the impact?"
+              impact = gets
+            elsif answer == "n"
+              impact = "No impact"
+            elsif answer == "o"
+              Launchy.open(changelog_url)
+            else
+              puts "Invalid answer"
+            end
+          end
+
+          change_detail = impact
+        end
+      end
+
+    else
+      version_string = version
+      info = gem_info(name, version)
+      guessed_source = gem_source_url(info)
+      change_detail = guessed_source
+    end
+
+    change_detail ||= "Unsupported source URL, cannot search for changelog"
+
+
+    @output += "* #{name} (#{version_string}): #{change_detail}\n"
+  end
+
+  def guess_changelog(root_url)
+    filenames = %w{
+      CHANGELOG
+      CHANGELOG.md
+      Changelog
+      Changelog.md
+      History
+      History.md
+      History.rdoc
+      Changes
+      CHANGES
+      CHANGES.md
+      NEWS
+    }
+    changelog_text = nil
+    changelog_url = nil
+
+    filenames.each do |filename|
+      changelog_text = try_changelog_url(root_url, filename)
+      if changelog_text
+        changelog_url = changelog_url_for(root_url, filename)
+        break
+      end
+    end
+
+    unless changelog_text
+      changelog_text = github_releases_bodies(root_url)
+      changelog_url = github_releases_url(root_url) if changelog_text
+    end
+
+    unless changelog_text
+      changelog_text = "Could not find changelog URL, try manually"
+      changelog_url = root_url
+    end
+
+    [changelog_text, changelog_url]
+  end
+
+  def gem_source_url(info)
+    source_url_guess = info["source_code_uri"] || info["homepage_uri"]
+    if source_url_guess&.include?("github.com")
+      source_url_guess
+    else
+      # Unsupported source URL
+      nil
+    end
   end
 
   def added_gems
@@ -80,6 +195,39 @@ class AuditedBundleUpdate
     end
 
     gems.to_h
+  end
+
+  def github_releases_url(source_root)
+    api_source_root = source_root.gsub("github.com/", "api.github.com/repos/")
+    "#{api_source_root}/releases"
+  end
+
+  def github_releases_bodies(source_root)
+    response = URI.parse(github_releases_url(source_root)).read
+    releases = JSON.parse(response)
+    release_notes = ""
+    releases.each do |release|
+      next unless release["body"]
+      release_notes += release["name"]
+      release_notes += "\n"
+      release_notes += release["body"]
+      release_notes += "\n"
+      release_notes += "\n"
+    end
+    release_notes
+  rescue OpenURI::HTTPError
+    return nil
+  end
+
+  def changelog_url_for(source_root, filename)
+    raw_source_root = source_root.gsub("github.com", "raw.githubusercontent.com")
+    url = "#{raw_source_root}/master/#{filename}"
+  end
+
+  def try_changelog_url(source_root, filename)
+    URI.parse(changelog_url_for(source_root, filename)).read
+  rescue OpenURI::HTTPError
+    return nil
   end
 
   def gem_info(name, version)

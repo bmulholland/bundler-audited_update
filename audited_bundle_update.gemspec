@@ -12,4 +12,5 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'bundler'
   s.add_runtime_dependency 'json'
   s.add_runtime_dependency 'versionomy'
+  s.add_runtime_dependency 'launchy'
 end
