@@ -10,4 +10,6 @@ Gem::Specification.new do |s|
   #s.homepage    = 'http://rubygems.org/gems/hola'
   s.license       = 'MIT'
   s.add_runtime_dependency 'bundler'
+  s.add_runtime_dependency 'json'
+  s.add_runtime_dependency 'versionomy'
 end
