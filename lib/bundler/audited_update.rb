@@ -26,7 +26,8 @@ module Bundler
       puts "\n\n\n\n\n"
 
       puts "--------------------------------"
-      puts "Audited Bundle Upgrade Text"
+      puts "Upgraded Gems"
+      puts "(Generated with bundler-audited_updated https://github.com/bmulholland/audited_bundle_update)"
       puts "--------------------------------"
 
       puts @output
@@ -89,7 +90,7 @@ module Bundler
             puts changelog_output
             impact = nil
             while impact.nil?
-              puts "Does this impact your application? (y/n/[o]pen in browser)"
+              puts "Does #{name} #{version_string} impact your application? (y/n/[o]pen in browser)"
               answer = gets
               answer = answer.downcase.strip
               if answer == "y"
