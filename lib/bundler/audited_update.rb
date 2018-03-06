@@ -129,6 +129,7 @@ module Bundler
       Changelog.md
       History
       History.md
+      HISTORY.md
       History.rdoc
       Changes
       CHANGES
