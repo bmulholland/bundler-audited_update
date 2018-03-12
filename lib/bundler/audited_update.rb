@@ -181,10 +181,8 @@ module Bundler
 
     def changed_gems
       gems = @after_specs.reject do |after_spec|
-        next unless after_spec
         before_spec = @before_specs.find {|before_spec| before_spec && before_spec.name == after_spec.name }
-        next unless before_spec # new gem
-        before_spec.version == after_spec.version
+        !before_spec || before_spec.version == after_spec.version
       end
 
       gems.map! do |the_gem|
