@@ -1,3 +1,7 @@
+## Version 0.1.5
+
+* Fix issue that prevented full changelog text from outputting
+
 ## Version 0.1.4
 
 * Fix crash when a new gem is added by the upgrade

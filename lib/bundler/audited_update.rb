@@ -84,7 +84,7 @@ module Bundler
             puts "#{name} changes from #{version_string}"
             puts "--------------------------------"
             # Output the changelog text from top until the line that contains the previous version
-            changelog_output = changelog_text.split(/^.*#{version[:before]}/, 2).first
+            changelog_output = changelog_text.split(/^.*#{Regexp.escape(version[:before])}/, 2).first
               # Max 200 lines
               changelog_output = changelog_output.lines.to_a[0...200].join
             puts changelog_output
