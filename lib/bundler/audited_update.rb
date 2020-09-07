@@ -84,7 +84,7 @@ module Bundler
             puts "#{name} changes from #{version_string}"
             puts "--------------------------------"
             # Output the changelog text from top until the line that contains the previous version
-            changelog_output = changelog_text.split(/^.*#{Regexp.escape(version[:before])}/, 2).first
+            changelog_output = changelog_text.split(/^.*#{Regexp.escape(version[:before].to_s)}/, 2).first
               # Max 200 lines
               changelog_output = changelog_output.lines.to_a[0...200].join
             puts changelog_output
@@ -204,7 +204,7 @@ module Bundler
     end
 
     def github_releases_bodies(source_root)
-      response = URI.parse(github_releases_url(source_root)).read
+      response = ::URI.parse(github_releases_url(source_root)).read
       releases = JSON.parse(response)
       release_notes = ""
       releases.each do |release|
@@ -226,14 +226,14 @@ module Bundler
     end
 
     def try_changelog_url(source_root, filename)
-      URI.parse(changelog_url_for(source_root, filename)).read
+      ::URI.parse(changelog_url_for(source_root, filename)).read
     rescue OpenURI::HTTPError
       return nil
     end
 
     def gem_info(name, version)
       gem_url = "https://rubygems.org/api/v2/rubygems/#{name}/versions/#{version}"
-      response = URI.parse(gem_url).read
+      response = ::URI.parse(gem_url).read
       JSON.parse(response)
     end
 
