@@ -1,3 +1,8 @@
+## Version 0.2.0
+
+* Upgrade to ruby 2.7.0
+* Fix issues caused by stdlib changes
+
 ## Version 0.1.5
 
 * Fix issue that prevented full changelog text from outputting

@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = 'bundler-audited_update'
-  s.version     = '0.1.5'
-  s.date        = '2018-02-20'
+  s.version     = '0.2.0'
+  s.date        = '2020-09-07'
   s.summary     = "Streamlined bundler audit with Changelog detection and summary ouput"
   s.description = "Runs a bundle upgrade, shows the changelog for each gem that was upgraded, and outputs a summary view of gem changes plus their impact."
   s.authors     = ["Brendan Mulholland"]
