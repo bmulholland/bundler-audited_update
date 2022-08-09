@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
 
-require "bundler/audited_update"
+require 'bundler/audited_update'
 
 Bundler::AuditedUpdate.new.run!
