@@ -1,3 +1,7 @@
+# Version 0.3.1
+
+* Add sorbet-static to continuously-updated gems list
+
 # Version 0.3.0
 
 * Hardcode source URLs for some gems

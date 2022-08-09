@@ -83,7 +83,8 @@ module Bundler
     def gem_output(name, version)
       # gems that are continuously released and therefore have no helpful
       # changelog
-      continuously_released_gems = %w[aws-partitions aws-sdk-core sorbet sorbet-runtime
+      continuously_released_gems = %w[
+        aws-partitions aws-sdk-core sorbet sorbet-runtime sorbet-static
                                       sorbet-static-and-runtime]
 
       if continuously_released_gems.include?(name)
