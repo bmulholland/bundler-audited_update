@@ -12,6 +12,12 @@ require 'launchy'
 
 module Bundler
   class AuditedUpdate
+    CHANGELOG_URLS = {
+      "graphql-pro" => "https://github.com/rmosolgo/graphql-ruby/blob/master/CHANGELOG-pro.md",
+      "sidekiq" => "https://github.com/mperham/sidekiq/blob/main/Changes.md",
+      "faraday" => "https://github.com/lostisland/faraday/releases"
+    }
+
     def run!
       @before_specs = gem_specs
       bundle_update
@@ -123,48 +129,48 @@ module Bundler
         version_string = "#{version[:before]} -> #{version[:after]}"
         info = gem_info(name, version[:after])
 
-        guessed_source = gem_source_url(info)
+        changelog_text, changelog_url = guess_changelog(
+          name, gem_source_url(info)
+        )
 
-        if guessed_source
-          changelog_text, changelog_url = guess_changelog(guessed_source)
+        if changelog_text && !changelog_text.empty?
+          puts "\n\n\n"
+          puts '--------------------------------'
+          puts "#{name} changes from #{version_string}"
+          puts '--------------------------------'
 
-          if changelog_text && !changelog_text.empty?
-            puts "\n\n\n"
-            puts '--------------------------------'
-            puts "#{name} changes from #{version_string}"
-            puts '--------------------------------'
-            # Output the changelog text from top until the line that contains the previous version
-            changelog_output = changelog_text.split(/^.*#{Regexp.escape(version[:before].to_s)}/, 2).first
-            # Max 200 lines
-            changelog_output = changelog_output.lines.to_a[0...200].join
-            puts changelog_output
-            impact = nil
-            while impact.nil?
-              puts "Does #{name} #{version_string} impact your application? (y/n/[o]pen in browser)"
-              answer = gets
-              answer = answer.downcase.strip
-              case answer
-              when 'y'
-                puts "What's a short description of the impact?"
-                impact = gets
-              when 'n'
-                impact = 'No impact'
-              when 'o'
-                Launchy.open(changelog_url)
-              else
-                puts 'Invalid answer'
-              end
+          # Output the changelog text from top until the line that contains the previous version
+          changelog_output = changelog_text.split(/^.*#{Regexp.escape(version[:before].to_s)}/, 2).first
+
+          # Max 200 lines
+          changelog_output = changelog_output.lines.to_a[0...200].join
+
+          puts changelog_output
+          impact = nil
+          while impact.nil?
+            puts "Does #{name} #{version_string} impact your application? (y/n/[o]pen in browser)"
+            answer = gets
+            answer = answer.downcase.strip
+            case answer
+            when 'y'
+              puts "What's a short description of the impact?"
+              impact = gets
+            when 'n'
+              impact = 'No impact'
+            when 'o'
+              Launchy.open(changelog_url)
+            else
+              puts 'Invalid answer'
             end
-
-            change_detail = impact
           end
+
+          change_detail = impact
         end
 
       else
         version_string = version
         info = gem_info(name, version)
-        guessed_source = gem_source_url(info)
-        change_detail = guessed_source
+        change_detail = gem_source_url(info)
       end
 
       change_detail ||= 'Unsupported source URL, cannot search for changelog'
@@ -172,7 +178,12 @@ module Bundler
       @output += "* #{name} (#{version_string}): #{change_detail}\n"
     end
 
-    def guess_changelog(root_url)
+    def guess_changelog(name, root_url)
+      # There are always going to be exceptions, so just hardcode those.
+      root_url = CHANGELOG_URLS[name] if CHANGELOG_URLS.key?(name)
+
+      return nil unless root_url
+
       filenames = %w[
         CHANGELOG
         CHANGELOG.md
@@ -190,11 +201,17 @@ module Bundler
       changelog_text = nil
       changelog_url = nil
 
-      filenames.each do |filename|
-        changelog_text = try_changelog_url(root_url, filename)
-        if changelog_text
-          changelog_url = changelog_url_for(root_url, filename)
-          break
+      root_url_is_releases_page = root_url.end_with?("/releases")
+
+      changelog_url = root_url if root_url_is_releases_page
+
+      unless changelog_url
+        filenames.each do |filename|
+          changelog_text = try_changelog_url(root_url, filename)
+          if changelog_text
+            changelog_url = changelog_url_for(root_url, filename)
+            break
+          end
         end
       end
 
@@ -252,7 +269,7 @@ module Bundler
 
     def github_releases_url(source_root)
       api_source_root = source_root.gsub('github.com/', 'api.github.com/repos/')
-      "#{api_source_root}/releases"
+      api_source_root.end_with?("/releases") ? api_source_root : "#{api_source_root}/releases"
     end
 
     def github_releases_bodies(source_root)
