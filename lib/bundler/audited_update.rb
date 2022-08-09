@@ -198,6 +198,8 @@ module Bundler
     end
 
     def gem_source_url(info)
+      return nil unless info
+
       source_url_guess = info["source_code_uri"] || info["homepage_uri"]
       if source_url_guess&.include?("github.com")
         source_url_guess
@@ -271,6 +273,10 @@ module Bundler
       gem_url = "https://rubygems.org/api/v2/rubygems/#{name}/versions/#{version}"
       response = ::URI.parse(gem_url).read
       JSON.parse(response)
+    rescue OpenURI::HTTPError => e
+      # return nil for 404 - which means the gem doens't exist on rubygems,
+      # probably private
+      raise unless e.message.include?("404")
     end
 
     def gem_specs
