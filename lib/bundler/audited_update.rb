@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'bundler'
 require 'bundler/lockfile_parser'
 require 'bundler/cli'
@@ -46,7 +48,7 @@ module Bundler
     def output_changed_gems(gems)
       return if gems.empty?
 
-      major_upgrades = gems.select { |_, versions| versions[:before].major != versions[:after].major }
+      major_upgrades = gems.reject { |_, versions| versions[:before].major == versions[:after].major }
       minor_upgrades = gems.select do |name, versions|
         !major_upgrades.keys.include?(name) && versions[:before].minor != versions[:after].minor
       end
@@ -102,12 +104,13 @@ module Bundler
           puts "Does #{name} #{version_string} impact your application? (y/n/[o]pen in browser)"
           answer = gets
           answer = answer.downcase.strip
-          if answer == 'y'
+          case answer
+          when 'y'
             puts "What's a short description of the impact?"
             impact = gets
-          elsif answer == 'n'
+          when 'n'
             impact = 'No impact'
-          elsif answer == 'o'
+          when 'o'
             Launchy.open(guessed_source)
           else
             puts 'Invalid answer'
@@ -140,12 +143,13 @@ module Bundler
               puts "Does #{name} #{version_string} impact your application? (y/n/[o]pen in browser)"
               answer = gets
               answer = answer.downcase.strip
-              if answer == 'y'
+              case answer
+              when 'y'
                 puts "What's a short description of the impact?"
                 impact = gets
-              elsif answer == 'n'
+              when 'n'
                 impact = 'No impact'
-              elsif answer == 'o'
+              when 'o'
                 Launchy.open(changelog_url)
               else
                 puts 'Invalid answer'
