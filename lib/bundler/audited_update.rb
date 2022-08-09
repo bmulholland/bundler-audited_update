@@ -71,16 +71,22 @@ module Bundler
     def gem_output(name, version)
       # gems that are continuously released and therefore have no helpful
       # changelog
-      continuously_released_gems = ["aws-partitions", "aws-sdk-core"]
+      continuously_released_gems = ["aws-partitions", "aws-sdk-core", "sorbet", "sorbet-runtime", "sorbet-static-and-runtime"]
 
-      if name.in? continuously_released_gems
+      if continuously_released_gems.include?(name)
         puts "\n\n\n"
         puts "--------------------------------"
         puts "#{name} updated"
         puts "--------------------------------"
 
-        version_string = version
-        info = gem_info(name, version)
+        if version.is_a? Hash
+          info = gem_info(name, version[:after])
+          version_string = "#{version[:before]} -> #{version[:after]}"
+        else
+          info = gem_info(name, version)
+          version_string = version
+        end
+
         guessed_source = gem_source_url(info)
         change_detail = guessed_source
 
