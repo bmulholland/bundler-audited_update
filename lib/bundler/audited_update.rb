@@ -69,7 +69,43 @@ module Bundler
     end
 
     def gem_output(name, version)
-      if version.is_a? Hash
+      # gems that are continuously released and therefore have no helpful
+      # changelog
+      continuously_released_gems = ["aws-partitions", "aws-sdk-core"]
+
+      if name.in? continuously_released_gems
+        puts "\n\n\n"
+        puts "--------------------------------"
+        puts "#{name} updated"
+        puts "--------------------------------"
+
+        version_string = version
+        info = gem_info(name, version)
+        guessed_source = gem_source_url(info)
+        change_detail = guessed_source
+
+        puts "This gem is continuously updated, with no meaningful changelog."
+
+        impact = nil
+        while impact.nil?
+          puts "Does #{name} #{version_string} impact your application? (y/n/[o]pen in browser)"
+          answer = gets
+          answer = answer.downcase.strip
+          if answer == "y"
+            puts "What's a short description of the impact?"
+            impact = gets
+          elsif answer == "n"
+            impact = "No impact"
+          elsif answer == "o"
+            Launchy.open(guessed_source)
+          else
+            puts "Invalid answer"
+          end
+        end
+
+        change_detail = impact
+
+      elsif version.is_a? Hash
         version_string = "#{version[:before]} -> #{version[:after]}"
         info = gem_info(name, version[:after])
 
